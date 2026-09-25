@@ -14,7 +14,7 @@ from dbterd.constants import (
     TEST_META_RELATIONSHIP_TYPE,
 )
 from dbterd.core.adapters.algo import BaseAlgoAdapter
-from dbterd.core.models import Ref, Table
+from dbterd.core.models import Ref, RefSource, Table
 from dbterd.core.registry.decorators import register_algo
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
@@ -52,16 +52,20 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
         tables = self.select_tables(self.get_tables(manifest=manifest, catalog=catalog, **kwargs), **kwargs)
 
         # Parse Ref
-        relationships = self.get_relationships(manifest=manifest, **kwargs)
-        relationships = self.make_up_relationships(relationships=relationships, tables=tables)
+        raw_relationships = self.get_relationships(manifest=manifest, **kwargs)
+        relationships, self_references = self.cook_relationships(relationships=raw_relationships, tables=tables)
 
-        # Fulfill columns in Tables (due to `select *`)
-        tables = self.enrich_tables_from_relationships(tables=tables, relationships=relationships)
+        # Fulfill columns in Tables (due to `select *`); self FKs still name
+        # columns on their table, so enrich with both lists.
+        tables = self.enrich_tables_from_relationships(tables=tables, relationships=[*relationships, *self_references])
 
-        logger.info(f"Collected {len(tables)} table(s) and {len(relationships)} relationship(s)")
+        logger.info(
+            f"Collected {len(tables)} table(s), {len(relationships)} relationship(s) "
+            f"and {len(self_references)} self reference(s)"
+        )
         return (
             sorted(tables, key=lambda tbl: tbl.node_name),
-            sorted(relationships, key=lambda rel: rel.name),
+            sorted([*relationships, *self_references], key=lambda rel: rel.name),
         )
 
     def parse_metadata(self, data: dict, **kwargs) -> tuple[list[Table], list[Ref]]:
@@ -70,13 +74,16 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
         tables = self.select_tables(self.get_tables_from_metadata(data=data, **kwargs), **kwargs)
 
         # Parse Ref
-        relationships = self.get_relationships_from_metadata(data=data, **kwargs)
-        relationships = self.make_up_relationships(relationships=relationships, tables=tables)
+        raw_relationships = self.get_relationships_from_metadata(data=data, **kwargs)
+        relationships, self_references = self.cook_relationships(relationships=raw_relationships, tables=tables)
 
-        logger.info(f"Collected {len(tables)} table(s) and {len(relationships)} relationship(s)")
+        logger.info(
+            f"Collected {len(tables)} table(s), {len(relationships)} relationship(s) "
+            f"and {len(self_references)} self reference(s)"
+        )
         return (
             sorted(tables, key=lambda tbl: tbl.node_name),
-            sorted(relationships, key=lambda rel: rel.name),
+            sorted([*relationships, *self_references], key=lambda rel: rel.name),
         )
 
     def find_related_nodes_by_id(
@@ -140,6 +147,8 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
                 ),
                 type=self.get_relationship_type(manifest.nodes[x].meta.get(TEST_META_RELATIONSHIP_TYPE, "")),
                 relationship_label=manifest.nodes[x].meta.get("relationship_label"),
+                source=RefSource.TEST,
+                evidence=[x],
             )
             for x in self.get_test_nodes_by_rule_name(manifest=manifest, rule_name=rule.get("name").lower())
         ]
@@ -188,6 +197,8 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
                             ),
                             type=self.get_relationship_type(test_meta.get(TEST_META_RELATIONSHIP_TYPE, "")),
                             relationship_label=test_meta.get("relationship_label"),
+                            source=RefSource.TEST,
+                            evidence=[test_id],
                         )
                     )
 

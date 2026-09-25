@@ -10,6 +10,7 @@ import copy
 from typing import Optional, Union
 
 from dbterd.core.filter import is_selected_table
+from dbterd.core.graph import normalize_relationships
 from dbterd.core.models import Column, Ref, Table
 from dbterd.types import Catalog, Manifest
 
@@ -576,7 +577,9 @@ class BaseAlgoAdapter(ABC):
     # -------------------------------------------------------------------------
 
     def make_up_relationships(
-        self, relationships: Optional[list[Ref]] = None, tables: Optional[list[Table]] = None
+        self,
+        relationships: Optional[list[Ref]] = None,
+        tables: Optional[list[Table]] = None,
     ) -> list[Ref]:
         """
         Filter Refs given by the parsed Tables & applied the entity name format.
@@ -601,15 +604,43 @@ class BaseAlgoAdapter(ABC):
                     next(t for t in tables if t.node_name == x.table_map[0]).name,
                     next(t for t in tables if t.node_name == x.table_map[1]).name,
                 ],
-                column_map=x.column_map,
+                column_map=copy.deepcopy(x.column_map),
                 type=x.type,
                 relationship_label=x.relationship_label,
+                source=x.source,
+                evidence=list(x.evidence),
+                is_self_reference=x.is_self_reference,
+                bidirectional=x.bidirectional,
             )
             for x in relationships
             if x.table_map[0] in node_names and x.table_map[1] in node_names
         ]
 
         return relationships
+
+    def cook_relationships(
+        self,
+        relationships: Optional[list[Ref]] = None,
+        tables: Optional[list[Table]] = None,
+    ) -> tuple[list[Ref], list[Ref]]:
+        """Map raw Refs onto entity names and normalize them in one pass.
+
+        This is the pipeline-facing counterpart of
+        :meth:`make_up_relationships`: it performs the same endpoint mapping
+        but keeps self references in a separate list, so the parsing stage can
+        keep enriching tables with every edge while downstream cycle detection
+        and subgraph grouping only see the normalized non-self edges.
+
+        Args:
+            relationships: Raw parsed relationships. Defaults to [].
+            tables: Parsed tables. Defaults to [].
+
+        Returns:
+            Tuple of ``(relationships, self_references)``; every unordered
+            model pair appears at most once in ``relationships``.
+        """
+        cooked = self.make_up_relationships(relationships=relationships, tables=tables)
+        return normalize_relationships(cooked)
 
     def get_unique_refs(self, refs: Optional[list[Ref]] = None) -> list[Ref]:
         """

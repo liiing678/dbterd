@@ -10,7 +10,7 @@ from typing import Optional, Union
 
 from dbterd.constants import TEST_META_RELATIONSHIP_TYPE
 from dbterd.core.adapters.algo import BaseAlgoAdapter
-from dbterd.core.models import Ref, Table
+from dbterd.core.models import Ref, RefSource, Table
 from dbterd.core.registry.decorators import register_algo
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
@@ -151,15 +151,18 @@ class ModelContractAlgo(BaseAlgoAdapter):
         tables = self.select_tables(self.get_tables(manifest=manifest, catalog=catalog, **kwargs), **kwargs)
         tables = self._enrich_tables_with_pk_info(tables=tables, manifest=manifest)
 
-        relationships = self.get_relationships(manifest=manifest, **kwargs)
-        relationships = self.make_up_relationships(relationships=relationships, tables=tables)
+        raw_relationships = self.get_relationships(manifest=manifest, **kwargs)
+        relationships, self_references = self.cook_relationships(relationships=raw_relationships, tables=tables)
 
-        tables = self.enrich_tables_from_relationships(tables=tables, relationships=relationships)
+        tables = self.enrich_tables_from_relationships(tables=tables, relationships=[*relationships, *self_references])
 
-        logger.info(f"Collected {len(tables)} table(s) and {len(relationships)} relationship(s)")
+        logger.info(
+            f"Collected {len(tables)} table(s), {len(relationships)} relationship(s) "
+            f"and {len(self_references)} self reference(s)"
+        )
         return (
             sorted(tables, key=lambda tbl: tbl.node_name),
-            sorted(relationships, key=lambda rel: rel.name),
+            sorted([*relationships, *self_references], key=lambda rel: rel.name),
         )
 
     def _enrich_tables_with_pk_info(self, tables: list[Table], manifest: Manifest) -> list[Table]:
@@ -346,6 +349,8 @@ class ModelContractAlgo(BaseAlgoAdapter):
                             column_map=([to_column], [col_name]),
                             type=relationship_type,
                             relationship_label=relationship_label,
+                            source=RefSource.FOREIGN_KEY,
+                            evidence=[constraint_name or node_name],
                         )
                     )
 
@@ -397,6 +402,8 @@ class ModelContractAlgo(BaseAlgoAdapter):
                     column_map=(to_columns, list(constraint.columns)),
                     type=relationship_type,
                     relationship_label=relationship_label,
+                    source=RefSource.FOREIGN_KEY,
+                    evidence=[constraint_name or node_name],
                 )
             )
 

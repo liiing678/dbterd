@@ -62,7 +62,23 @@ Here is a trimmed sample of the output:
       "relationship_type": "fk",
       "name": "test.jaffle_shop.relationships_order_items_order_id",
       "label": null,
-      "cardinality": "n1"
+      "cardinality": "n1",
+      "source": "test",
+      "evidence": ["test.jaffle_shop.relationships_order_items_order_id"],
+      "is_self_reference": false,
+      "bidirectional": false
+    }
+  ],
+  "subgraphs": [
+    {
+      "name": "subgraph_1",
+      "node_ids": [
+        "model.jaffle_shop.order_items",
+        "model.jaffle_shop.orders"
+      ],
+      "is_single_node": false,
+      "has_cycle": false,
+      "edge_ids": ["test.jaffle_shop.relationships_order_items_order_id"]
     }
   ],
   "metadata": {
@@ -106,6 +122,8 @@ select:
   - wildcard:model.jaffle_shop.fct_*
 ```
 
+Edge merging, source priority, self-reference and cycle rules are documented separately under [Edge Resolution](./../../metadata/edge_resolution.md).
+
 See the [configuration file](./../configuration-file.md) guide for the full list of keys.
 
 ## 3. Validate against the schema
@@ -137,6 +155,12 @@ pipx run check-jsonschema --schemafile \
 | edge     | `from_id` / `to_id` | FK (child) side → referenced (parent) side                       |
 | edge     | `from_columns`      | Full column list; supports composite foreign keys               |
 | edge     | `cardinality`       | dbterd code: `n1`, `1n`, `11`, `nn`, `01`, `0n`                 |
+| edge     | `source`            | Discovery channel: `custom` / `foreign_key` / `semantic` / `test` |
+| edge     | `evidence`          | All test/constraint/entity ids merged into this single edge      |
+| edge     | `is_self_reference` | Self FK; rendered but excluded from cycle detection              |
+| edge     | `bidirectional`     | Evidence pointed both ways; merged into one FK-side edge         |
+| subgraph | `is_single_node`    | Isolated table component                                         |
+| subgraph | `has_cycle`         | Directed cycle between non-self edges in the component           |
 | metadata | `generated_at`      | Manifest generation timestamp                                    |
 | metadata | `dbterd_version`    | dbterd version that produced the payload (matches `$schema`)     |
 

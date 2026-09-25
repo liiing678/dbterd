@@ -58,6 +58,15 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                 "description": "Node groupings, emitted only when the `--entity-group` option is set.",
                 "items": {"$ref": "#/$defs/group"},
             },
+            "subgraphs": {
+                "type": "array",
+                "description": (
+                    "Connected components of the relationship graph. Single-node "
+                    "components and components containing a directed cycle are flagged. "
+                    "Self-reference edges never participate in cycle detection."
+                ),
+                "items": {"$ref": "#/$defs/subgraph"},
+            },
         },
         "$defs": {
             "resourceType": {
@@ -84,18 +93,37 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
             },
             "node": {
                 "type": "object",
-                "required": ["id", "name", "resource_type", "schema_name", "database", "columns"],
+                "required": [
+                    "id",
+                    "name",
+                    "resource_type",
+                    "schema_name",
+                    "database",
+                    "columns",
+                ],
                 "additionalProperties": True,
                 "properties": {
-                    "id": {"type": "string", "description": "dbt unique id, e.g. model.pkg.orders."},
+                    "id": {
+                        "type": "string",
+                        "description": "dbt unique id, e.g. model.pkg.orders.",
+                    },
                     "name": {"type": "string", "description": "Friendly table name."},
-                    "label": {"type": ["string", "null"], "description": "Display label, when set."},
-                    "description": {"type": ["string", "null"], "description": "Table/model documentation."},
+                    "label": {
+                        "type": ["string", "null"],
+                        "description": "Display label, when set.",
+                    },
+                    "description": {
+                        "type": ["string", "null"],
+                        "description": "Table/model documentation.",
+                    },
                     "resource_type": {"$ref": "#/$defs/resourceType"},
                     "schema_name": {"type": "string"},
                     "database": {"type": "string"},
                     "columns": {"type": "array", "items": {"$ref": "#/$defs/column"}},
-                    "compiled_sql": {"type": ["string", "null"], "description": "Compiled SQL of the node."},
+                    "compiled_sql": {
+                        "type": ["string", "null"],
+                        "description": "Compiled SQL of the node.",
+                    },
                 },
             },
             "edge": {
@@ -104,14 +132,89 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                 "additionalProperties": True,
                 "properties": {
                     "id": {"type": "string"},
-                    "from_id": {"type": "string", "description": "Node id of the FK (child) side."},
-                    "to_id": {"type": "string", "description": "Node id of the referenced (parent) side."},
+                    "from_id": {
+                        "type": "string",
+                        "description": "Node id of the FK (child) side.",
+                    },
+                    "to_id": {
+                        "type": "string",
+                        "description": "Node id of the referenced (parent) side.",
+                    },
                     "from_columns": {"type": "array", "items": {"type": "string"}},
                     "to_columns": {"type": "array", "items": {"type": "string"}},
-                    "relationship_type": {"type": "string", "enum": ["fk"], "default": "fk"},
+                    "relationship_type": {
+                        "type": "string",
+                        "enum": ["fk"],
+                        "default": "fk",
+                    },
                     "name": {"type": "string"},
                     "label": {"type": ["string", "null"]},
                     "cardinality": {"$ref": "#/$defs/cardinality"},
+                    "source": {
+                        "type": "string",
+                        "description": (
+                            "Discovery channel of the edge; drives merge priority "
+                            "(custom > foreign_key > semantic > test)."
+                        ),
+                        "enum": [
+                            "custom",
+                            "foreign_key",
+                            "semantic",
+                            "test",
+                            "unknown",
+                        ],
+                    },
+                    "evidence": {
+                        "type": "array",
+                        "description": "Provenance ids (test/constraint/entity names) merged into this edge.",
+                        "items": {"type": "string"},
+                    },
+                    "is_self_reference": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Both endpoints are the same node (self FK); excluded from cycle detection.",
+                    },
+                    "bidirectional": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Raw evidence contained edges in both directions; merged into one.",
+                    },
+                },
+            },
+            "subgraph": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "node_ids",
+                    "is_single_node",
+                    "has_cycle",
+                    "edge_ids",
+                ],
+                "additionalProperties": True,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Stable subgraph identifier, e.g. `subgraph_1`.",
+                    },
+                    "node_ids": {"type": "array", "items": {"type": "string"}},
+                    "is_single_node": {
+                        "type": "boolean",
+                        "description": "One node and no relationships.",
+                    },
+                    "has_cycle": {
+                        "type": "boolean",
+                        "description": "A directed cycle exists between non-self-reference edges.",
+                    },
+                    "edge_ids": {
+                        "type": "array",
+                        "description": "Evidence ids of the edges contained in this subgraph.",
+                        "items": {"type": "string"},
+                    },
+                    "self_reference_edge_ids": {
+                        "type": "array",
+                        "description": "Self-reference edges attached to nodes in this subgraph (never cyclic).",
+                        "items": {"type": "string"},
+                    },
                 },
             },
             "group": {
@@ -137,7 +240,10 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                 "properties": {
                     "generated_at": {"type": "string"},
                     "dbt_project_name": {"type": "string"},
-                    "dbterd_version": {"type": "string", "description": "dbterd version that produced this payload."},
+                    "dbterd_version": {
+                        "type": "string",
+                        "description": "dbterd version that produced this payload.",
+                    },
                 },
             },
         },

@@ -5,7 +5,7 @@ import click
 import pytest
 
 from dbterd.adapters.algos.test_relationship import TestRelationshipAlgo
-from dbterd.core.models import Column, Ref, Table
+from dbterd.core.models import Column, Ref, RefSource, Table
 from tests.unit.adapters.algos import (
     DummyCatalogTable,
     DummyManifestError,
@@ -123,11 +123,15 @@ class TestAlgoTestRelationship:
                         name="test.dbt_resto.relationships_table1",
                         table_map=["model.dbt_resto.table2", "model.dbt_resto.table1"],
                         column_map=(["f2"], ["f1"]),
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.relationships_table1"],
                     ),
                     Ref(
                         name="test.dbt_resto.relationships_table3",
                         table_map=["model.dbt_resto.tabley", "model.dbt_resto.tablex"],
                         column_map=(["f2"], ["f1"]),
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.relationships_table3"],
                     ),
                     Ref(
                         name="test.dbt_resto.relationships_table4",
@@ -137,6 +141,8 @@ class TestAlgoTestRelationship:
                         ],
                         column_map=(["f2"], ["f1"]),
                         type="11",
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.relationships_table4"],
                     ),
                     Ref(
                         name="test.dbt_resto.relationships_table1_reverse",
@@ -145,11 +151,15 @@ class TestAlgoTestRelationship:
                             "model.dbt_resto.table-r1",
                         ],
                         column_map=(["f2"], ["f1"]),
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.relationships_table1_reverse"],
                     ),
                     Ref(
                         name="test.dbt_resto.relationships_table1_recursive",
                         table_map=["model.dbt_resto.table1", "model.dbt_resto.table1"],
                         column_map=(["f2"], ["f1"]),
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.relationships_table1_recursive"],
                     ),
                 ],
             ),
@@ -161,6 +171,8 @@ class TestAlgoTestRelationship:
                         name="test.dbt_resto.foreign_key_table1",
                         table_map=["model.dbt_resto.table2", "model.dbt_resto.table1"],
                         column_map=(["f2"], ["f1"]),
+                        source=RefSource.TEST,
+                        evidence=["test.dbt_resto.foreign_key_table1"],
                     ),
                 ],
             ),
@@ -581,6 +593,8 @@ class TestAlgoTestRelationship:
                         table_map=["", ""],
                         column_map=(["colx"], ["coly"]),
                         type="n1",
+                        source=RefSource.TEST,
+                        evidence=["test.relationship_1"],
                     )
                 ],
             ),
@@ -617,6 +631,8 @@ class TestAlgoTestRelationship:
                         table_map=["model.p.x", "model.p.y"],
                         column_map=(["colx"], ["coly"]),
                         type="n1",
+                        source=RefSource.TEST,
+                        evidence=["test.relationship_1"],
                     )
                 ],
             ),
@@ -653,6 +669,8 @@ class TestAlgoTestRelationship:
                         table_map=["model.p.x", "model.p.y"],
                         column_map=(["colx"], ["coly"]),
                         type="n1",
+                        source=RefSource.TEST,
+                        evidence=["test.relationship_1"],
                     )
                 ],
             ),
@@ -688,6 +706,8 @@ class TestAlgoTestRelationship:
                         table_map=["model.p.x", "model.p.x"],
                         column_map=(["colx"], ["coly"]),
                         type="n1",
+                        source=RefSource.TEST,
+                        evidence=["test.relationship_1"],
                     )
                 ],
             ),
@@ -754,7 +774,11 @@ class TestAlgoTestRelationship:
     def test_parse_artifacts_with_dependencies(self):
         """`with_dependencies` resolves through nodes the selection dropped."""
         with (
-            mock.patch.object(TestRelationshipAlgo, "get_tables", return_value=dependency_chain_tables()),
+            mock.patch.object(
+                TestRelationshipAlgo,
+                "get_tables",
+                return_value=dependency_chain_tables(),
+            ),
             mock.patch.object(TestRelationshipAlgo, "get_relationships", return_value=[]),
         ):
             tables, _ = TestRelationshipAlgo().parse_artifacts(
@@ -765,12 +789,19 @@ class TestAlgoTestRelationship:
                 resource_type=["model", "source"],
                 with_dependencies=True,
             )
-            assert {t.name: t.depends_on for t in tables} == {"src": [], "mart": ["src"]}
+            assert {t.name: t.depends_on for t in tables} == {
+                "src": [],
+                "mart": ["src"],
+            }
 
     def test_parse_metadata_with_dependencies(self):
         """`with_dependencies` resolves through nodes the selection dropped."""
         with (
-            mock.patch.object(TestRelationshipAlgo, "get_tables_from_metadata", return_value=dependency_chain_tables()),
+            mock.patch.object(
+                TestRelationshipAlgo,
+                "get_tables_from_metadata",
+                return_value=dependency_chain_tables(),
+            ),
             mock.patch.object(TestRelationshipAlgo, "get_relationships_from_metadata", return_value=[]),
         ):
             tables, _ = TestRelationshipAlgo().parse_metadata(
@@ -780,4 +811,7 @@ class TestAlgoTestRelationship:
                 resource_type=["model", "source"],
                 with_dependencies=True,
             )
-            assert {t.name: t.depends_on for t in tables} == {"src": [], "mart": ["src"]}
+            assert {t.name: t.depends_on for t in tables} == {
+                "src": [],
+                "mart": ["src"],
+            }

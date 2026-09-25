@@ -4,8 +4,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from dbterd.adapters.algos.semantic import SemanticAlgo
-from dbterd.core.models import Ref
-from tests.unit.adapters.algos import DummyManifestRel, DummyManifestTable, dependency_chain_tables
+from dbterd.core.models import Ref, RefSource
+from tests.unit.adapters.algos import (
+    DummyManifestRel,
+    DummyManifestTable,
+    dependency_chain_tables,
+)
 
 
 class TestAlgoSemantic:
@@ -51,6 +55,8 @@ class TestAlgoSemantic:
                         table_map=("model.a.model1", "model.a.model2"),
                         column_map=(["one"], ["one"]),
                         type="",
+                        source=RefSource.SEMANTIC,
+                        evidence=["semantic_model.a.model1"],
                     )
                 ],
             ),
@@ -91,6 +97,8 @@ class TestAlgoSemantic:
                         table_map=("model.a.model1", "model.a.model2"),
                         column_map=(["one"], ["two"]),
                         type="",
+                        source=RefSource.SEMANTIC,
+                        evidence=["semantic_model.a.model1"],
                     )
                 ],
             ),
@@ -111,12 +119,16 @@ class TestAlgoSemantic:
                         table_map=("model.dbt_resto.table1", "model.dbt_resto.table2"),
                         column_map=(["id1"], ["id2"]),
                         type="",
+                        source=RefSource.SEMANTIC,
+                        evidence=["semantic_model.dbt_resto.sm1"],
                     ),
                     Ref(
                         name="semantic_model.dbt_resto.sm1",
                         table_map=("model.dbt_resto.table1", "model.dbt_resto.tablex"),
                         column_map=(["id1"], ["x"]),
                         type="",
+                        source=RefSource.SEMANTIC,
+                        evidence=["semantic_model.dbt_resto.sm1"],
                     ),
                 ],
             ),
@@ -180,7 +192,10 @@ class TestAlgoSemantic:
                 resource_type=["model", "source"],
                 with_dependencies=True,
             )
-            assert {t.name: t.depends_on for t in tables} == {"src": [], "mart": ["src"]}
+            assert {t.name: t.depends_on for t in tables} == {
+                "src": [],
+                "mart": ["src"],
+            }
 
     def test_parse_metadata(self):
         with (
@@ -206,7 +221,11 @@ class TestAlgoSemantic:
     def test_parse_metadata_with_dependencies(self):
         """`with_dependencies` resolves through nodes the selection dropped."""
         with (
-            mock.patch.object(SemanticAlgo, "get_tables_from_metadata", return_value=dependency_chain_tables()),
+            mock.patch.object(
+                SemanticAlgo,
+                "get_tables_from_metadata",
+                return_value=dependency_chain_tables(),
+            ),
             mock.patch.object(SemanticAlgo, "get_relationships_from_metadata", return_value=[]),
         ):
             tables, _ = SemanticAlgo().parse_metadata(
@@ -216,4 +235,7 @@ class TestAlgoSemantic:
                 resource_type=["model", "source"],
                 with_dependencies=True,
             )
-            assert {t.name: t.depends_on for t in tables} == {"src": [], "mart": ["src"]}
+            assert {t.name: t.depends_on for t in tables} == {
+                "src": [],
+                "mart": ["src"],
+            }

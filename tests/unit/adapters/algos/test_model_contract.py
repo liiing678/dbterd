@@ -11,7 +11,7 @@ from dbterd.adapters.algos.model_contract import (
     _resolve_ref_to_node_id,
     _resolve_to_node_id,
 )
-from dbterd.core.models import Column, Ref, Table
+from dbterd.core.models import Column, Ref, RefSource, Table
 from tests.unit.adapters.algos import (
     ConstraintType,
     DummyManifestNoConstraintsAttr,
@@ -239,6 +239,8 @@ class TestAlgoModelContract:
                 table_map=["model.pkg.customers", "model.pkg.orders"],
                 column_map=(["id"], ["customer_id"]),
                 type="n1",
+                source=RefSource.FOREIGN_KEY,
+                evidence=["fk_orders_customer_id"],
             )
             in refs
         )
@@ -248,6 +250,8 @@ class TestAlgoModelContract:
                 table_map=["model.pkg.products", "model.pkg.orders"],
                 column_map=(["id"], ["product_id"]),
                 type="n1",
+                source=RefSource.FOREIGN_KEY,
+                evidence=["fk_orders_product_id"],
             )
             in refs
         )
@@ -261,6 +265,8 @@ class TestAlgoModelContract:
                 table_map=["model.pkg.customers", "model.pkg.orders"],
                 column_map=(["id"], ["customer_id"]),
                 type="n1",
+                source=RefSource.FOREIGN_KEY,
+                evidence=["fk_orders_customer_id"],
             )
             in refs
         )
@@ -275,6 +281,8 @@ class TestAlgoModelContract:
                 table_map=["model.pkg.departments", "model.pkg.orders"],
                 column_map=(["org_id", "dept_id"], ["org_id", "dept_id"]),
                 type="n1",
+                source=RefSource.FOREIGN_KEY,
+                evidence=["fk_orders_department"],
             )
             in refs
         )
@@ -878,7 +886,10 @@ class TestAlgoModelContract:
                 resource_type=["model", "source"],
                 with_dependencies=True,
             )
-            assert {t.name: t.depends_on for t in tables} == {"src": [], "mart": ["src"]}
+            assert {t.name: t.depends_on for t in tables} == {
+                "src": [],
+                "mart": ["src"],
+            }
 
     def test_parse_metadata_not_supported(self):
         algo = ModelContractAlgo()

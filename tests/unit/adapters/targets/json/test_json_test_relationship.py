@@ -41,7 +41,11 @@ class TestJsonTestRelationship:
                         schema="--schema--",
                         resource_type="model",
                         columns=[
-                            Column(name="name1", data_type="--name1-type--", description="column name 1"),
+                            Column(
+                                name="name1",
+                                data_type="--name1-type--",
+                                description="column name 1",
+                            ),
                         ],
                         raw_sql="--irrelevant--",
                     ),
@@ -78,6 +82,15 @@ class TestJsonTestRelationship:
                         "dbt_project_name": "shop",
                         "dbterd_version": get_schema_version(),
                     },
+                    "subgraphs": [
+                        {
+                            "name": "subgraph_1",
+                            "node_ids": ["model.dbt_resto.table1"],
+                            "is_single_node": True,
+                            "has_cycle": False,
+                            "edge_ids": [],
+                        }
+                    ],
                 },
             ),
             # Two tables with a foreign-key relationship
@@ -165,6 +178,10 @@ class TestJsonTestRelationship:
                             "name": "test.dbt_resto.relationships_table1",
                             "label": None,
                             "cardinality": "n1",
+                            "source": "test",
+                            "evidence": ["test.dbt_resto.relationships_table1"],
+                            "is_self_reference": False,
+                            "bidirectional": False,
                         }
                     ],
                     "metadata": {
@@ -172,6 +189,18 @@ class TestJsonTestRelationship:
                         "dbt_project_name": "shop",
                         "dbterd_version": get_schema_version(),
                     },
+                    "subgraphs": [
+                        {
+                            "name": "subgraph_1",
+                            "node_ids": [
+                                "model.dbt_resto.table1",
+                                "model.dbt_resto.table2",
+                            ],
+                            "is_single_node": False,
+                            "has_cycle": False,
+                            "edge_ids": ["test.dbt_resto.relationships_table1"],
+                        }
+                    ],
                 },
             ),
         ],
@@ -228,6 +257,10 @@ class TestJsonTestRelationship:
             "name": "fk_composite",
             "label": None,
             "cardinality": "1n",
+            "source": "test",
+            "evidence": ["fk_composite"],
+            "is_self_reference": False,
+            "bidirectional": False,
         }
 
     def test_relationship_label_propagates(self):
@@ -269,7 +302,13 @@ class TestJsonTestRelationship:
 
     def test_node_handles_no_columns(self):
         adapter = JsonAdapter()
-        table = Table(name="model.pkg.x", node_name="model.pkg.x", database="db", schema="sch", columns=None)
+        table = Table(
+            name="model.pkg.x",
+            node_name="model.pkg.x",
+            database="db",
+            schema="sch",
+            columns=None,
+        )
         node = adapter.format_node(table, foreign_keys={})
         assert node["columns"] == []
 
@@ -309,7 +348,10 @@ class TestJsonTestRelationship:
     def test_run(self):
         adapter = JsonAdapter()
         with mock.patch.object(JsonAdapter, "build_erd", return_value="dummy") as mock_build_erd:
-            assert adapter.run(tables=[], relationships=[], output_file_name="xyz") == ("xyz", "dummy")
+            assert adapter.run(tables=[], relationships=[], output_file_name="xyz") == (
+                "xyz",
+                "dummy",
+            )
             assert adapter.run(tables=[], relationships=[]) == ("output.json", "dummy")
             assert mock_build_erd.call_count == 2
 
@@ -326,15 +368,25 @@ class TestJsonEntityGroup:
                 [
                     make_table("model.dbt_resto.table1"),
                     make_table("model.dbt_resto.table2", columns=[make_column(name="name2")]),
-                    make_table("source.dbt_resto.table3", database="--database3--", schema="--schema3--"),
+                    make_table(
+                        "source.dbt_resto.table3",
+                        database="--database3--",
+                        schema="--schema3--",
+                    ),
                 ],
                 "database.schema",
                 [
                     {
                         "name": "--database--.--schema--",
-                        "node_ids": ["model.dbt_resto.table1", "model.dbt_resto.table2"],
+                        "node_ids": [
+                            "model.dbt_resto.table1",
+                            "model.dbt_resto.table2",
+                        ],
                     },
-                    {"name": "--database3--.--schema3--", "node_ids": ["source.dbt_resto.table3"]},
+                    {
+                        "name": "--database3--.--schema3--",
+                        "node_ids": ["source.dbt_resto.table3"],
+                    },
                 ],
             ),
             (
@@ -346,7 +398,10 @@ class TestJsonEntityGroup:
                 [
                     {
                         "name": "--schema--",
-                        "node_ids": ["model.dbt_resto.table1", "source.dbt_resto.table3"],
+                        "node_ids": [
+                            "model.dbt_resto.table1",
+                            "source.dbt_resto.table3",
+                        ],
                     }
                 ],
             ),
@@ -363,7 +418,9 @@ class TestJsonEntityGroup:
         adapter = JsonAdapter()
         result = json.loads(
             adapter.build_erd(
-                tables=[make_table("model.dbt_resto.table1")], relationships=[], entity_group=entity_group
+                tables=[make_table("model.dbt_resto.table1")],
+                relationships=[],
+                entity_group=entity_group,
             )
         )
         assert "groups" not in result
@@ -397,3 +454,84 @@ class TestJsonEntityGroup:
         table.node_name = None
         groups = adapter.format_entity_groups([table], "schema")
         assert groups == [{"name": "sch", "node_ids": ["orders"]}]
+
+
+def _make_table(name):
+    return Table(
+        name=name,
+        node_name=name,
+        database="db",
+        schema="sch",
+        resource_type="model",
+        columns=[Column(name="id", data_type="int")],
+        raw_sql="--irrelevant--",
+    )
+
+
+class TestJsonSubgraphs:
+    def test_self_reference_edge_flagged_and_attached_to_subgraph(self):
+        adapter = JsonAdapter()
+        tables = [_make_table("model.pkg.employee")]
+        relationship = Ref(
+            name="self.manager",
+            table_map=["model.pkg.employee", "model.pkg.employee"],
+            column_map=(["manager_id"], ["manager_id"]),
+            is_self_reference=True,
+            evidence=["self.manager"],
+        )
+
+        result = json.loads(adapter.build_erd(tables=tables, relationships=[relationship]))
+
+        edge = result["edges"][0]
+        assert edge["is_self_reference"] is True
+        subgraph = result["subgraphs"][0]
+        assert subgraph["is_single_node"] is True
+        assert subgraph["has_cycle"] is False
+        assert subgraph["self_reference_edge_ids"] == ["self.manager"]
+
+    def test_cyclic_component_is_flagged_but_self_edge_is_not_cyclic(self):
+        adapter = JsonAdapter()
+        tables = [_make_table(f"model.pkg.{name}") for name in ("a", "b", "c")]
+        relationships = [
+            Ref(
+                name=f"edge.{i}",
+                table_map=[f"model.pkg.{to_table}", f"model.pkg.{from_table}"],
+                column_map=(["id"], [f"{from_table}_id"]),
+                evidence=[f"edge.{i}"],
+            )
+            for i, (to_table, from_table) in enumerate(
+                [("a", "b"), ("b", "c"), ("c", "a")],
+                start=1,
+            )
+        ]
+
+        result = json.loads(adapter.build_erd(tables=tables, relationships=relationships))
+
+        assert len(result["subgraphs"]) == 1
+        assert result["subgraphs"][0]["has_cycle"] is True
+        assert result["subgraphs"][0]["is_single_node"] is False
+        assert set(result["subgraphs"][0]["edge_ids"]) == {"edge.1", "edge.2", "edge.3"}
+
+    def test_bidirectional_flag_is_rendered_on_edge(self):
+        adapter = JsonAdapter()
+        tables = [_make_table("model.pkg.a"), _make_table("model.pkg.b")]
+        relationships = [
+            Ref(
+                name="e1",
+                table_map=["model.pkg.a", "model.pkg.b"],
+                column_map=(["id"], ["a_id"]),
+                evidence=["e1"],
+            ),
+            Ref(
+                name="e2",
+                table_map=["model.pkg.b", "model.pkg.a"],
+                column_map=(["a_id"], ["id"]),
+                evidence=["e2"],
+            ),
+        ]
+
+        result = json.loads(adapter.build_erd(tables=tables, relationships=relationships))
+
+        assert len(result["edges"]) == 1
+        assert result["edges"][0]["bidirectional"] is True
+        assert set(result["edges"][0]["evidence"]) == {"e1", "e2"}

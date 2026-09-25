@@ -12,6 +12,7 @@ import json
 
 from dbterd.core.adapters.target import BaseTargetAdapter
 from dbterd.core.builder.json_builder import JsonERDBuilder
+from dbterd.core.graph import analyze_subgraphs, normalize_relationships
 from dbterd.core.models import Ref, Table
 from dbterd.core.registry.decorators import register_target
 from dbterd.core.schemas.erd import SCHEMA_BASE_URL
@@ -42,7 +43,16 @@ class JsonAdapter(BaseTargetAdapter):
     default_filename = "output.json"
 
     def build_erd(self, tables: list[Table], relationships: list[Ref], **kwargs) -> str:
-        """Build the dbterd ERD JSON payload from tables and relationships."""
+        """Build the dbterd ERD JSON payload from tables and relationships.
+
+        Relationships are normalized again here so direct Python API callers
+        get the same guarantees as the CLI pipeline: at most one edge per
+        unordered model pair, bidirectional evidence merged, and self
+        references flagged (but never treated as cycles).
+        """
+        relationships, self_references = normalize_relationships(list(relationships))
+        relationships = [*relationships, *self_references]
+
         foreign_keys = self._collect_foreign_keys(relationships)
         schema_version = get_schema_version()
 
@@ -62,6 +72,8 @@ class JsonAdapter(BaseTargetAdapter):
         entity_group = kwargs.get("entity_group")
         if entity_group and tables:
             schema["groups"] = self.format_entity_groups(tables, entity_group)
+
+        schema["subgraphs"] = self.format_subgraphs(tables, relationships)
 
         return builder.build(schema=schema)
 
@@ -130,7 +142,50 @@ class JsonAdapter(BaseTargetAdapter):
             "name": relationship.name,
             "label": relationship.relationship_label,
             "cardinality": relationship.type,
+            "source": relationship.source.value,
+            "evidence": list(relationship.evidence) or [relationship.name],
+            "is_self_reference": relationship.is_self_reference,
+            "bidirectional": relationship.bidirectional,
         }
+
+    def format_subgraphs(self, tables: list[Table], relationships: list[Ref]) -> list[dict]:
+        """Format connected-component subgraphs with single-node/cycle flags.
+
+        Self-reference edges are carried on their own node but never make a
+        subgraph cyclic and never merge components; cycle detection runs on
+        directed non-self edges only (see :func:`analyze_subgraphs`).
+        """
+        name_to_id = {table.name: table.node_name or table.name for table in tables}
+        # Edges carry entity names (post ``make_up_relationships``), so run the
+        # graph analysis on entity names, then map the component members to
+        # node ids for the payload.
+        table_names = list(name_to_id.keys())
+        non_self = [rel for rel in relationships if not rel.is_self_reference]
+        self_refs = [rel for rel in relationships if rel.is_self_reference]
+
+        subgraphs = analyze_subgraphs(tables=table_names, relationships=non_self)
+
+        formatted = []
+        for subgraph in subgraphs:
+            node_ids = [name_to_id.get(node, node) for node in subgraph.node_ids]
+            entry = {
+                "name": subgraph.name,
+                "node_ids": node_ids,
+                "is_single_node": subgraph.is_single_node,
+                "has_cycle": subgraph.has_cycle,
+                "edge_ids": subgraph.edge_ids,
+            }
+            subgraph_node_names = set(subgraph.node_ids)
+            self_ids = [
+                evidence
+                for edge in self_refs
+                for evidence in (list(edge.evidence) or [edge.name])
+                if edge.table_map[0] in subgraph_node_names
+            ]
+            if self_ids:
+                entry["self_reference_edge_ids"] = list(dict.fromkeys(self_ids))
+            formatted.append(entry)
+        return formatted
 
     def format_entity_groups(self, tables: list[Table], entity_group: str) -> list[dict]:
         """Group nodes by ``Table`` attributes, mirroring the DBML ``TableGroup`` feature.

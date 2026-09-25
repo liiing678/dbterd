@@ -8,7 +8,7 @@ from typing import Optional, Union
 
 from dbterd.constants import TEST_META_RELATIONSHIP_TYPE
 from dbterd.core.adapters.algo import BaseAlgoAdapter
-from dbterd.core.models import Ref, SemanticEntity, Table
+from dbterd.core.models import Ref, RefSource, SemanticEntity, Table
 from dbterd.core.registry.decorators import register_algo
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
@@ -28,16 +28,19 @@ class SemanticAlgo(BaseAlgoAdapter):
         tables = self.select_tables(self.get_tables(manifest=manifest, catalog=catalog, **kwargs), **kwargs)
 
         # Parse Ref
-        relationships = self.get_relationships(manifest=manifest)
-        relationships = self.make_up_relationships(relationships=relationships, tables=tables)
+        raw_relationships = self.get_relationships(manifest=manifest)
+        relationships, self_references = self.cook_relationships(relationships=raw_relationships, tables=tables)
 
         # Fulfill columns in Tables (due to `select *`)
-        tables = self.enrich_tables_from_relationships(tables=tables, relationships=relationships)
+        tables = self.enrich_tables_from_relationships(tables=tables, relationships=[*relationships, *self_references])
 
-        logger.info(f"Collected {len(tables)} table(s) and {len(relationships)} relationship(s)")
+        logger.info(
+            f"Collected {len(tables)} table(s), {len(relationships)} relationship(s) "
+            f"and {len(self_references)} self reference(s)"
+        )
         return (
             sorted(tables, key=lambda tbl: tbl.node_name),
-            sorted(relationships, key=lambda rel: rel.name),
+            sorted([*relationships, *self_references], key=lambda rel: rel.name),
         )
 
     def parse_metadata(self, data: dict, **kwargs) -> tuple[list[Table], list[Ref]]:
@@ -48,13 +51,16 @@ class SemanticAlgo(BaseAlgoAdapter):
         tables = self.select_tables(self.get_tables_from_metadata(data=data_list, **kwargs), **kwargs)
 
         # Parse Ref
-        relationships = self.get_relationships_from_metadata(data=data_list)
-        relationships = self.make_up_relationships(relationships=relationships, tables=tables)
+        raw_relationships = self.get_relationships_from_metadata(data=data_list)
+        relationships, self_references = self.cook_relationships(relationships=raw_relationships, tables=tables)
 
-        logger.info(f"Collected {len(tables)} table(s) and {len(relationships)} relationship(s)")
+        logger.info(
+            f"Collected {len(tables)} table(s), {len(relationships)} relationship(s) "
+            f"and {len(self_references)} self reference(s)"
+        )
         return (
             sorted(tables, key=lambda tbl: tbl.node_name),
-            sorted(relationships, key=lambda rel: rel.name),
+            sorted([*relationships, *self_references], key=lambda rel: rel.name),
         )
 
     def find_related_nodes_by_id(
@@ -261,6 +267,8 @@ class SemanticAlgo(BaseAlgoAdapter):
                         [foreign_entity.column_name],
                     ),
                     type=primary_entity.relationship_type,
+                    source=RefSource.SEMANTIC,
+                    evidence=[primary_entity.semantic_model],
                 )
                 for foreign_entity, primary_entity in entities
             ]
@@ -287,6 +295,8 @@ class SemanticAlgo(BaseAlgoAdapter):
                         [foreign_entity.column_name],
                     ),
                     type=primary_entity.relationship_type,
+                    source=RefSource.SEMANTIC,
+                    evidence=[primary_entity.semantic_model],
                 )
                 for foreign_entity, primary_entity in entities
             ]
