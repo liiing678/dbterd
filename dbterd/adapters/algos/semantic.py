@@ -10,6 +10,7 @@ from dbterd.constants import TEST_META_RELATIONSHIP_TYPE
 from dbterd.core.adapters.algo import BaseAlgoAdapter
 from dbterd.core.models import Ref, SemanticEntity, Table
 from dbterd.core.registry.decorators import register_algo
+from dbterd.core.relationships import RefSource
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
 
@@ -261,6 +262,7 @@ class SemanticAlgo(BaseAlgoAdapter):
                         [foreign_entity.column_name],
                     ),
                     type=primary_entity.relationship_type,
+                    source=RefSource.CUSTOM.value,
                 )
                 for foreign_entity, primary_entity in entities
             ]
@@ -287,6 +289,7 @@ class SemanticAlgo(BaseAlgoAdapter):
                         [foreign_entity.column_name],
                     ),
                     type=primary_entity.relationship_type,
+                    source=RefSource.CUSTOM.value,
                 )
                 for foreign_entity, primary_entity in entities
             ]

@@ -11,6 +11,8 @@ from typing import Optional, Union
 
 from dbterd.core.filter import is_selected_table
 from dbterd.core.models import Column, Ref, Table
+from dbterd.core.relationships import merge_duplicate_refs
+from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
 
 
@@ -52,8 +54,19 @@ class BaseAlgoAdapter(ABC):
 
         """
         if catalog == "metadata":
-            return self.parse_metadata(data=manifest, **kwargs)
-        return self.parse_artifacts(manifest=manifest, catalog=catalog, **kwargs)
+            tables, relationships = self.parse_metadata(data=manifest, **kwargs)
+        else:
+            tables, relationships = self.parse_artifacts(manifest=manifest, catalog=catalog, **kwargs)
+
+        # One edge per unordered table pair: exact duplicates and bidirectional
+        # pairs collapse onto the ref with the most complete evidence.
+        merged = merge_duplicate_refs(refs=relationships)
+        if len(merged) != len(relationships):
+            logger.info(
+                f"Merged {len(relationships) - len(merged)} duplicate relationship(s) "
+                f"({len(relationships)} -> {len(merged)})"
+            )
+        return tables, merged
 
     @abstractmethod
     def parse_artifacts(self, manifest: Manifest, catalog: Catalog, **kwargs) -> tuple[list[Table], list[Ref]]:
@@ -604,6 +617,7 @@ class BaseAlgoAdapter(ABC):
                 column_map=x.column_map,
                 type=x.type,
                 relationship_label=x.relationship_label,
+                source=x.source,
             )
             for x in relationships
             if x.table_map[0] in node_names and x.table_map[1] in node_names

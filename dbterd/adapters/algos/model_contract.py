@@ -12,6 +12,7 @@ from dbterd.constants import TEST_META_RELATIONSHIP_TYPE
 from dbterd.core.adapters.algo import BaseAlgoAdapter
 from dbterd.core.models import Ref, Table
 from dbterd.core.registry.decorators import register_algo
+from dbterd.core.relationships import RefSource
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
 
@@ -346,6 +347,7 @@ class ModelContractAlgo(BaseAlgoAdapter):
                             column_map=([to_column], [col_name]),
                             type=relationship_type,
                             relationship_label=relationship_label,
+                            source=RefSource.FOREIGN_KEY.value,
                         )
                     )
 
@@ -397,6 +399,7 @@ class ModelContractAlgo(BaseAlgoAdapter):
                     column_map=(to_columns, list(constraint.columns)),
                     type=relationship_type,
                     relationship_label=relationship_label,
+                    source=RefSource.FOREIGN_KEY.value,
                 )
             )
 

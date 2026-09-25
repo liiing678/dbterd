@@ -238,6 +238,7 @@ class TestAlgoModelContract:
                 name="fk_orders_customer_id",  # constraint name used as Ref name
                 table_map=["model.pkg.customers", "model.pkg.orders"],
                 column_map=(["id"], ["customer_id"]),
+                source="foreign_key",
                 type="n1",
             )
             in refs
@@ -247,6 +248,7 @@ class TestAlgoModelContract:
                 name="fk_orders_product_id",  # constraint name used as Ref name
                 table_map=["model.pkg.products", "model.pkg.orders"],
                 column_map=(["id"], ["product_id"]),
+                source="foreign_key",
                 type="n1",
             )
             in refs
@@ -260,6 +262,7 @@ class TestAlgoModelContract:
                 name="fk_orders_customer_id",  # constraint name used as Ref name
                 table_map=["model.pkg.customers", "model.pkg.orders"],
                 column_map=(["id"], ["customer_id"]),
+                source="foreign_key",
                 type="n1",
             )
             in refs
@@ -274,6 +277,7 @@ class TestAlgoModelContract:
                 name="fk_orders_department",  # constraint name used as Ref name
                 table_map=["model.pkg.departments", "model.pkg.orders"],
                 column_map=(["org_id", "dept_id"], ["org_id", "dept_id"]),
+                source="foreign_key",
                 type="n1",
             )
             in refs

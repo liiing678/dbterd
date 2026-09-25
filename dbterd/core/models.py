@@ -40,6 +40,12 @@ class Ref:
     column_map: tuple[list[str], list[str]]
     type: str = "n1"
     relationship_label: Optional[str] = None
+    source: str = "custom"
+
+    @property
+    def is_self_reference(self) -> bool:
+        """Whether both ends of the relationship point at the same table."""
+        return self.table_map[0] == self.table_map[1]
 
 
 @dataclass

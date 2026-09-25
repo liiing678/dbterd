@@ -14,6 +14,7 @@ from dbterd.core.adapters.target import BaseTargetAdapter
 from dbterd.core.builder.json_builder import JsonERDBuilder
 from dbterd.core.models import Ref, Table
 from dbterd.core.registry.decorators import register_target
+from dbterd.core.relationships import Subgraph, group_subgraphs
 from dbterd.core.schemas.erd import SCHEMA_BASE_URL
 
 
@@ -62,6 +63,8 @@ class JsonAdapter(BaseTargetAdapter):
         entity_group = kwargs.get("entity_group")
         if entity_group and tables:
             schema["groups"] = self.format_entity_groups(tables, entity_group)
+
+        schema["subgraphs"] = self.format_subgraphs(tables, relationships)
 
         return builder.build(schema=schema)
 
@@ -130,6 +133,33 @@ class JsonAdapter(BaseTargetAdapter):
             "name": relationship.name,
             "label": relationship.relationship_label,
             "cardinality": relationship.type,
+            "source": relationship.source,
+            "is_self_reference": relationship.is_self_reference,
+        }
+
+    def format_subgraphs(self, tables: list[Table], relationships: list[Ref]) -> list[dict]:
+        """Group nodes and edges into connected-component subgraphs.
+
+        Every table lands in exactly one subgraph — isolated tables become
+        singleton groups — so downstream layout tools can render each
+        connected island independently. Self-referencing edges are listed
+        separately (``self_reference_edge_ids``) and never count toward
+        ``has_cycle``.
+        """
+        node_id_of = {table.name: table.node_name or table.name for table in tables}
+        subgraphs = group_subgraphs(tables=tables, refs=relationships)
+        return [self._format_subgraph(subgraph, node_id_of) for subgraph in subgraphs]
+
+    @staticmethod
+    def _format_subgraph(subgraph: Subgraph, node_id_of: dict[str, str]) -> dict:
+        """Format a single subgraph as a JSON-serializable dict."""
+        return {
+            "name": subgraph.name,
+            "node_ids": [node_id_of.get(name, name) for name in subgraph.tables],
+            "edge_ids": [ref.name for ref in subgraph.relationships],
+            "self_reference_edge_ids": [ref.name for ref in subgraph.self_references],
+            "is_singleton": subgraph.is_singleton,
+            "has_cycle": subgraph.has_cycle,
         }
 
     def format_entity_groups(self, tables: list[Table], entity_group: str) -> list[dict]:

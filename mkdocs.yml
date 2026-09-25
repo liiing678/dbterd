@@ -16,6 +16,7 @@ nav:
       - Configuration Files: nav/guide/configuration-file.md
       - CLI Reference: nav/guide/cli-references.md
       - Choose the Parser: nav/guide/choose-algo.md
+      - Relationship Resolution: nav/guide/relationship-resolution.md
       - Generate the Targets:
         - DBML: nav/guide/targets/generate-dbml.md
         - Mermaid: nav/guide/targets/generate-markdown-mermaid-erd.md

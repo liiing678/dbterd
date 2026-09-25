@@ -62,16 +62,32 @@ Here is a trimmed sample of the output:
       "relationship_type": "fk",
       "name": "test.jaffle_shop.relationships_order_items_order_id",
       "label": null,
-      "cardinality": "n1"
+      "cardinality": "n1",
+      "source": "test",
+      "is_self_reference": false
     }
   ],
   "metadata": {
     "generated_at": "2024-07-28T01:54:24.620460Z",
     "dbt_project_name": "jaffle_shop",
     "dbterd_version": "1.2.3"
-  }
+  },
+  "subgraphs": [
+    {
+      "name": "subgraph_1",
+      "node_ids": ["model.jaffle_shop.order_items", "model.jaffle_shop.orders"],
+      "edge_ids": ["test.jaffle_shop.relationships_order_items_order_id"],
+      "self_reference_edge_ids": [],
+      "is_singleton": false,
+      "has_cycle": false
+    }
+  ]
 }
 ```
+
+Relationships are deduplicated and grouped before they reach the payload — see
+[Relationship Resolution](./../relationship-resolution.md) for the merge rules, source
+priority, and how `subgraphs` is built.
 
 ## Sample config
 
@@ -137,6 +153,13 @@ pipx run check-jsonschema --schemafile \
 | edge     | `from_id` / `to_id` | FK (child) side → referenced (parent) side                       |
 | edge     | `from_columns`      | Full column list; supports composite foreign keys               |
 | edge     | `cardinality`       | dbterd code: `n1`, `1n`, `11`, `nn`, `01`, `0n`                 |
+| edge     | `source`            | `foreign_key` / `test` / `custom` — see [source priority](./../relationship-resolution.md#source-priority) |
+| edge     | `is_self_reference` | True when both ends point at the same node                       |
+| subgraph | `node_ids`          | Connected component; every node appears in exactly one subgraph  |
+| subgraph | `edge_ids`          | Non-self-referencing edges inside the component                  |
+| subgraph | `self_reference_edge_ids` | Self-referencing edges, kept apart from cycle detection    |
+| subgraph | `is_singleton`      | True for a single node with no edges                             |
+| subgraph | `has_cycle`         | True when the component's edges contain a directed cycle         |
 | metadata | `generated_at`      | Manifest generation timestamp                                    |
 | metadata | `dbterd_version`    | dbterd version that produced the payload (matches `$schema`)     |
 

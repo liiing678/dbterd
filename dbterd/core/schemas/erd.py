@@ -58,6 +58,15 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                 "description": "Node groupings, emitted only when the `--entity-group` option is set.",
                 "items": {"$ref": "#/$defs/group"},
             },
+            "subgraphs": {
+                "type": "array",
+                "description": (
+                    "Connected components of the relationship graph. Every node belongs to exactly one "
+                    "subgraph; isolated tables form singleton subgraphs. Self-referencing edges are listed "
+                    "separately and excluded from cycle detection."
+                ),
+                "items": {"$ref": "#/$defs/subgraph"},
+            },
         },
         "$defs": {
             "resourceType": {
@@ -69,6 +78,15 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                 "type": "string",
                 "description": "dbterd relationship type code.",
                 "enum": ["01", "11", "0n", "1n", "nn", "n1"],
+            },
+            "refSource": {
+                "type": "string",
+                "description": (
+                    "Origin of the relationship, in descending order of authority: foreign_key (dbt model "
+                    "contract constraints) > test (dbt relationship tests) > custom (semantic entities or "
+                    "custom mappings)."
+                ),
+                "enum": ["foreign_key", "test", "custom"],
             },
             "column": {
                 "type": "object",
@@ -112,6 +130,43 @@ def build_erd_json_schema(schema_version: str) -> dict[str, Any]:
                     "name": {"type": "string"},
                     "label": {"type": ["string", "null"]},
                     "cardinality": {"$ref": "#/$defs/cardinality"},
+                    "source": {"$ref": "#/$defs/refSource"},
+                    "is_self_reference": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "True when both ends of the edge point at the same node.",
+                    },
+                },
+            },
+            "subgraph": {
+                "type": "object",
+                "required": ["name", "node_ids", "edge_ids", "is_singleton", "has_cycle"],
+                "additionalProperties": True,
+                "properties": {
+                    "name": {"type": "string", "description": "Stable group id, e.g. subgraph_1."},
+                    "node_ids": {
+                        "type": "array",
+                        "description": "Node ids in this connected component.",
+                        "items": {"type": "string"},
+                    },
+                    "edge_ids": {
+                        "type": "array",
+                        "description": "Non-self-referencing edge ids in this component.",
+                        "items": {"type": "string"},
+                    },
+                    "self_reference_edge_ids": {
+                        "type": "array",
+                        "description": "Self-referencing edge ids, kept apart from cycle detection.",
+                        "items": {"type": "string"},
+                    },
+                    "is_singleton": {
+                        "type": "boolean",
+                        "description": "True when the component is a single node with no edges.",
+                    },
+                    "has_cycle": {
+                        "type": "boolean",
+                        "description": "True when the component's edges contain a directed cycle.",
+                    },
                 },
             },
             "group": {

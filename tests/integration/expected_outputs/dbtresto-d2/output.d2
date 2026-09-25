@@ -217,12 +217,6 @@
   expected: date
 }
 "model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_1 = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_2 = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_3 = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_4 = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_5 = date_key"
-"model.dbt_resto.fact_number" -> "model.dbt_resto.dim_date": "last_appearance_pos_6 = date_key"
 "model.dbt_resto.fact_result" -> "model.dbt_resto.dim_box": "box_key = box_key"
 "model.dbt_resto.fact_result" -> "model.dbt_resto.dim_date": "date_key = date_key"
 "model.dbt_resto.fact_result" -> "model.dbt_resto.dim_prize": "prize_key = prize_key"

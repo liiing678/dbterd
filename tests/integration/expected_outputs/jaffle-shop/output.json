@@ -774,7 +774,9 @@
       "relationship_type": "fk",
       "name": "test.jaffle_shop.relationships_order_items_order_id__order_id__ref_orders_.a799023ee8",
       "label": null,
-      "cardinality": "n1"
+      "cardinality": "n1",
+      "source": "test",
+      "is_self_reference": false
     },
     {
       "id": "test.jaffle_shop.relationships_orders_customer_id__customer_id__ref_stg_customers_.918495ce16",
@@ -789,7 +791,9 @@
       "relationship_type": "fk",
       "name": "test.jaffle_shop.relationships_orders_customer_id__customer_id__ref_stg_customers_.918495ce16",
       "label": null,
-      "cardinality": "n1"
+      "cardinality": "n1",
+      "source": "test",
+      "is_self_reference": false
     },
     {
       "id": "test.jaffle_shop.relationships_stg_order_items_order_id__order_id__ref_stg_orders_.dbe9930c54",
@@ -804,12 +808,124 @@
       "relationship_type": "fk",
       "name": "test.jaffle_shop.relationships_stg_order_items_order_id__order_id__ref_stg_orders_.dbe9930c54",
       "label": null,
-      "cardinality": "n1"
+      "cardinality": "n1",
+      "source": "test",
+      "is_self_reference": false
     }
   ],
   "metadata": {
     "generated_at": "2024-07-28T01:54:24.620460Z",
     "dbt_project_name": "jaffle_shop",
     "dbterd_version": "latest"
-  }
+  },
+  "subgraphs": [
+    {
+      "name": "subgraph_1",
+      "node_ids": [
+        "model.jaffle_shop.customers"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_2",
+      "node_ids": [
+        "model.jaffle_shop.locations"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_3",
+      "node_ids": [
+        "model.jaffle_shop.metricflow_time_spine"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_4",
+      "node_ids": [
+        "model.jaffle_shop.order_items",
+        "model.jaffle_shop.orders",
+        "model.jaffle_shop.stg_customers"
+      ],
+      "edge_ids": [
+        "test.jaffle_shop.relationships_order_items_order_id__order_id__ref_orders_.a799023ee8",
+        "test.jaffle_shop.relationships_orders_customer_id__customer_id__ref_stg_customers_.918495ce16"
+      ],
+      "self_reference_edge_ids": [],
+      "is_singleton": false,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_5",
+      "node_ids": [
+        "model.jaffle_shop.products"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_6",
+      "node_ids": [
+        "model.jaffle_shop.stg_locations"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_7",
+      "node_ids": [
+        "model.jaffle_shop.stg_order_items",
+        "model.jaffle_shop.stg_orders"
+      ],
+      "edge_ids": [
+        "test.jaffle_shop.relationships_stg_order_items_order_id__order_id__ref_stg_orders_.dbe9930c54"
+      ],
+      "self_reference_edge_ids": [],
+      "is_singleton": false,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_8",
+      "node_ids": [
+        "model.jaffle_shop.stg_products"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_9",
+      "node_ids": [
+        "model.jaffle_shop.stg_supplies"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    },
+    {
+      "name": "subgraph_10",
+      "node_ids": [
+        "model.jaffle_shop.supplies"
+      ],
+      "edge_ids": [],
+      "self_reference_edge_ids": [],
+      "is_singleton": true,
+      "has_cycle": false
+    }
+  ]
 }

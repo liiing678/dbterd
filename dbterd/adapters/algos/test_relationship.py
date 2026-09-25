@@ -16,6 +16,7 @@ from dbterd.constants import (
 from dbterd.core.adapters.algo import BaseAlgoAdapter
 from dbterd.core.models import Ref, Table
 from dbterd.core.registry.decorators import register_algo
+from dbterd.core.relationships import RefSource
 from dbterd.helpers.log import logger
 from dbterd.types import Catalog, Manifest
 
@@ -140,6 +141,7 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
                 ),
                 type=self.get_relationship_type(manifest.nodes[x].meta.get(TEST_META_RELATIONSHIP_TYPE, "")),
                 relationship_label=manifest.nodes[x].meta.get("relationship_label"),
+                source=RefSource.TEST.value,
             )
             for x in self.get_test_nodes_by_rule_name(manifest=manifest, rule_name=rule.get("name").lower())
         ]
@@ -188,6 +190,7 @@ class TestRelationshipAlgo(BaseAlgoAdapter):
                             ),
                             type=self.get_relationship_type(test_meta.get(TEST_META_RELATIONSHIP_TYPE, "")),
                             relationship_label=test_meta.get("relationship_label"),
+                            source=RefSource.TEST.value,
                         )
                     )
 

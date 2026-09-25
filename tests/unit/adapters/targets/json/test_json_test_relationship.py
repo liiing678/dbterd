@@ -78,6 +78,16 @@ class TestJsonTestRelationship:
                         "dbt_project_name": "shop",
                         "dbterd_version": get_schema_version(),
                     },
+                    "subgraphs": [
+                        {
+                            "name": "subgraph_1",
+                            "node_ids": ["model.dbt_resto.table1"],
+                            "edge_ids": [],
+                            "self_reference_edge_ids": [],
+                            "is_singleton": True,
+                            "has_cycle": False,
+                        }
+                    ],
                 },
             ),
             # Two tables with a foreign-key relationship
@@ -165,6 +175,8 @@ class TestJsonTestRelationship:
                             "name": "test.dbt_resto.relationships_table1",
                             "label": None,
                             "cardinality": "n1",
+                            "source": "custom",
+                            "is_self_reference": False,
                         }
                     ],
                     "metadata": {
@@ -172,6 +184,16 @@ class TestJsonTestRelationship:
                         "dbt_project_name": "shop",
                         "dbterd_version": get_schema_version(),
                     },
+                    "subgraphs": [
+                        {
+                            "name": "subgraph_1",
+                            "node_ids": ["model.dbt_resto.table1", "model.dbt_resto.table2"],
+                            "edge_ids": ["test.dbt_resto.relationships_table1"],
+                            "self_reference_edge_ids": [],
+                            "is_singleton": False,
+                            "has_cycle": False,
+                        }
+                    ],
                 },
             ),
         ],
@@ -228,6 +250,8 @@ class TestJsonTestRelationship:
             "name": "fk_composite",
             "label": None,
             "cardinality": "1n",
+            "source": "custom",
+            "is_self_reference": False,
         }
 
     def test_relationship_label_propagates(self):

@@ -389,42 +389,6 @@ digraph g {
     fontcolor = "black"
     label = "last_appearance = date_key"
   ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_1 = date_key"
-  ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_2 = date_key"
-  ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_3 = date_key"
-  ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_4 = date_key"
-  ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_5 = date_key"
-  ];
-  "mart.fact_number" -> "mart.dim_date" [
-    penwidth = 1
-    fontsize = 12
-    fontcolor = "black"
-    label = "last_appearance_pos_6 = date_key"
-  ];
   "mart.fact_result" -> "mart.dim_box" [
     penwidth = 1
     fontsize = 12
